@@ -30,27 +30,33 @@ fun main() {
         }
     }
 
+    fun findLowestLocation(ranges: List<List<MapRanges>>, seeds: List<Long>): Long {
+        val lowestLocation: MutableList<Long> = MutableList(0){0}
+
+        for (seed in seeds) {
+            val possibleOutcomes = List(8){ mutableSetOf<Long>() }
+            possibleOutcomes[0].add(seed)
+            for ((mapIndex, xyMap) in ranges.withIndex()) {
+                var foundMatch = false
+                for (number in possibleOutcomes[mapIndex]) {
+                    for (mapRange in xyMap) {
+                        if (mapRange.srcFrom <= number && mapRange.srcTo >= number) {
+                            possibleOutcomes[mapIndex + 1].add(mapRange.destTo - (mapRange.srcTo - number))
+                            foundMatch = true
+                        }
+                    }
+                    if (!foundMatch) possibleOutcomes[mapIndex + 1].add(number)
+                }
+            }
+            lowestLocation.add(possibleOutcomes[7].min())
+        }
+        return lowestLocation.min()
+    }
+
     fun part1(input: List<String>): Long {
         val parsedInput = parseInput(input)
         val ranges = getRanges(parsedInput.subList(1, parsedInput.size))
-        val checkedNumbers: MutableList<Set<Long>> = MutableList(7){ setOf(-1) }
-
-        val locationForSeed: MutableList<Long> = MutableList(0){ 0 }
-        for (seed in parsedInput[0][0]) {
-            var currentNumberToFind = seed
-            for ((mapIndex, xyMap) in ranges.withIndex()) {
-                var possibleNumbersToContinue: MutableList<Long>
-                for (mapRange in xyMap) {
-
-                    if (mapRange.srcFrom <= currentNumberToFind && mapRange.srcTo >= currentNumberToFind) {
-                        currentNumberToFind = mapRange.destTo - (mapRange.srcTo - currentNumberToFind)
-                    }
-                    if (mapIndex == 6) locationForSeed.add(currentNumberToFind)
-                }
-            }
-        }
-        val test = 0
-        return 35
+        return findLowestLocation(ranges, parsedInput[0][0])
     }
 
     fun part2(input: List<String>): Int {
