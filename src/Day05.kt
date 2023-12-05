@@ -1,10 +1,12 @@
+import kotlin.math.min
+
 fun main() {
 
     fun parseInput(input: List<String>): List<List<List<Long>>> {
         val xToYMap: MutableList<List<List<Long>>> = MutableList(0){List(0){List(0){0} } }
         val currentMap: MutableList<List<Long>> = MutableList(0){List(0){0} }
 
-        val seeds = input[0].split(": ", " ").drop(1).map { it.toLong()}
+        val seeds = input[0].split(": ", " ").drop(1).map { it.toLong() }
         xToYMap.add(listOf(seeds))
 
         val parsedInput = input.drop(3).filter { it != ""}
@@ -52,6 +54,53 @@ fun main() {
         }
         return lowestLocation.min()
     }
+    fun findLowestLocation2(ranges: List<List<MapRanges>>, seeds: List<Long>): Long {
+        var lowestLocation = Long.MAX_VALUE
+        val startTime = System.currentTimeMillis()
+        val alreadyChecked: List<MutableSet<Long>> = List(7){ mutableSetOf() }
+        var foundMatch: Boolean
+        var pOut: MutableSet<Long>
+        val lowest = ranges.map { line -> line.minOf { it.srcFrom }}
+        val highest = ranges.map { line -> line.minOf { it.srcTo }}
+
+        for (i in seeds.indices step 2) {
+            for (seed in seeds[i]..< (seeds[i] + seeds[i + 1])) {
+                val possibleOutcomes = List(7) { mutableSetOf<Long>() }
+                for ((mapIndex, xyMap) in ranges.withIndex()) {
+                    foundMatch = false
+                    pOut = if (mapIndex == 0) {
+                        mutableSetOf(seed)
+                    } else {
+                        possibleOutcomes[mapIndex]
+                    }
+                    for (number in pOut) {
+                        if (number < lowest[mapIndex] && number > highest[mapIndex]) continue
+                        if (alreadyChecked[mapIndex].contains(number)) continue
+                        alreadyChecked[mapIndex].add(number)
+                        for (mapRange in xyMap) {
+                            if (mapRange.srcFrom <= number && mapRange.srcTo >= number) {
+                                foundMatch = true
+                                if (mapIndex == 6) {
+                                    lowestLocation = min(lowestLocation, mapRange.destTo - (mapRange.srcTo - number))
+                                }
+                                else possibleOutcomes[mapIndex + 1].add(mapRange.destTo - (mapRange.srcTo - number))
+                            }
+                        }
+                        if (foundMatch) continue
+                        if (mapIndex == 6) {
+                            lowestLocation = min(lowestLocation, number)
+                            continue
+                        }
+                        possibleOutcomes[mapIndex + 1].add(number)
+                    }
+                }
+            }
+            println("${i+2} seeds from ${seeds.size} done")
+            println("${((i+2)*100)/(seeds.size)}% done")
+            println("elapsed time: ${(System.currentTimeMillis() - startTime)/1000}s")
+        }
+        return lowestLocation
+    }
 
     fun part1(input: List<String>): Long {
         val parsedInput = parseInput(input)
@@ -59,16 +108,18 @@ fun main() {
         return findLowestLocation(ranges, parsedInput[0][0])
     }
 
-    fun part2(input: List<String>): Int {
-        return input.size
+    fun part2(input: List<String>): Long {
+        val parsedInput = parseInput(input)
+        val ranges = getRanges(parsedInput.subList(1, parsedInput.size))
+        return findLowestLocation2(ranges, parsedInput[0][0])
     }
 
     // test if implementation meets criteria from the description, like:
     val testInput = readInput("Day05_test")
     check(part1(testInput) == 35.toLong())
-//    check(part2(testInput) == 30)
+    check(part2(testInput) == 46.toLong())
 
     val input = readInput("Day05")
-    part1(input).println()
-//    part2(input).println()
+//    part1(input).println()
+    part2(input).println()
 }
