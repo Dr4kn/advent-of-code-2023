@@ -1,5 +1,3 @@
-import kotlin.math.min
-
 fun main() {
 
     fun part1(input: List<String>): Int {
