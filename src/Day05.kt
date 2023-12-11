@@ -57,19 +57,10 @@ fun main() {
     fun findLowestLocation2(ranges: List<List<MapRanges>>, seeds: List<Long>): Long {
         var lowestLocation = Long.MAX_VALUE
         val startTime = System.currentTimeMillis()
-//        val alreadyChecked: List<MutableSet<Long>> = List(7){ mutableSetOf() }
         var foundMatch: Boolean
         var pOut: MutableSet<Long>
         val lowest = ranges.map { line -> line.minOf { it.srcFrom }}
         val highest = ranges.map { line -> line.minOf { it.srcTo }}
-//        val seedBase: MutableList<Long> = MutableList(0){0}
-//        val seedAdd: MutableList<Long> = MutableList(0){0}
-//        val seedsLarge: MutableList<List<Long>> = MutableList(0){List(0){0} }
-//        for (i in seeds.indices step 2) {
-//            seedBase.add(seeds[i])
-//            seedAdd.add(seeds[i+1])
-//            seedsLarge.add(listOf(seeds[i], seeds[i] + seeds[i + 1] - 1))
-//        }
 
         for (i in seeds.indices step 2) {
             for (seed in seeds[i]..< (seeds[i] + seeds[i + 1])) {
@@ -83,8 +74,6 @@ fun main() {
                     }
                     for (number in pOut) {
                         if (number < lowest[mapIndex] && number > highest[mapIndex]) continue
-//                        if (alreadyChecked[mapIndex].contains(number)) continue
-//                        alreadyChecked[mapIndex].add(number)
                         for (mapRange in xyMap) {
                             if (mapRange.srcFrom <= number && mapRange.srcTo >= number) {
                                 foundMatch = true
