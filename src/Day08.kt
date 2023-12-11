@@ -1,6 +1,23 @@
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.runBlocking
+import java.math.BigInteger
+
 fun main() {
 
     data class Node(val start: String, val left: String, val right: String)
+
+    fun List<Int>.lcm(): BigInteger {
+        val bigIntList = this.map { it.toBigInteger() }
+        var lcm = bigIntList[0]
+
+        for (number in bigIntList.subList(1, bigIntList.size)) {
+            lcm = (lcm.multiply(number)).divide(lcm.gcd(number))
+        }
+
+        return lcm
+    }
 
     fun parseInput(input: List<String>): Pair<String, List<Node>> {
         val directions = input[0]
@@ -26,45 +43,51 @@ fun main() {
         return steps
     }
 
-    fun part2(input: List<String>): Int {
+    fun part2(input: List<String>): Long {
         val (directions, nodeNetwork) = parseInput(input)
-        var steps = 1
-        var currentPosition = 1
         val endsWithA = nodeNetwork.filter { it.start.last() == 'A' }
-        var nextElement = if (directions[0] == 'L') {
-            endsWithA.map { it.left }.toSet()
-        } else {
-            endsWithA.map { it.right }.toSet()
+        val answer = runBlocking(Dispatchers.Default) {
+            val allLoops = endsWithA.map { loop ->
+                async {
+                    var steps = 0
+                    var currentPosition = 0
+                    var nextElement = loop.start
+                    var stepsToFirstZ = 0
+                    val stepsToSameZ: Int
+                    var firstZ = ""
+                    val loopLength: Int
+                    while (true) {
+                        val index = nodeNetwork.binarySearch { String.CASE_INSENSITIVE_ORDER.compare(it.start, nextElement) }
+                        nextElement = if (directions[currentPosition] == 'L') nodeNetwork[index].left else nodeNetwork[index].right
+                        currentPosition++
+                        if (currentPosition >= directions.length) currentPosition = 0
+                        steps++
+                        if (nextElement.last() != 'Z') continue
+                        if (stepsToFirstZ == 0) {
+                            firstZ = nextElement
+                            stepsToFirstZ = steps
+                            steps = 0
+                            continue
+                        }
+                        if (nextElement != firstZ) continue
+                        stepsToSameZ = steps
+                        loopLength = stepsToSameZ
+                        break
+                    }
+                    loopLength
+                }
+            }.awaitAll()
+
+            return@runBlocking allLoops.lcm()
         }
 
-        var index: Int
-        while (true) {
-            val next: MutableSet<String> = mutableSetOf()
-            for (element in nextElement) {
-                index = nodeNetwork.binarySearch { String.CASE_INSENSITIVE_ORDER.compare(it.start, element) }
-                if (directions[currentPosition] == 'L') {
-                    next.add(nodeNetwork[index].left)
-                } else {
-                    next.add(nodeNetwork[index].right)
-                }
-            }
-            steps++
-            if (next.count { it.last() == 'Z' } == next.size) return steps
-            currentPosition++
-            if (currentPosition >= directions.length) currentPosition = 0
-            nextElement = next
-            if (steps%1000000 == 0) {
-                println(steps/1000000)
-                nextElement.forEach { println(it) }
-                println()
-            }
-        }
+        return answer.toLong()
     }
 
     // test if implementation meets criteria from the description, like:
     val testInput = readInput("Day08_test")
 //    check(part1(testInput) == 6)
-    check(part2(testInput) == 6)
+    check(part2(testInput) == 6.toLong())
 
     val input = readInput("Day08")
 //    part1(input).println()
