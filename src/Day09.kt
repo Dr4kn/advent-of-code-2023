@@ -15,11 +15,11 @@ fun main() {
     }
 
     // test if implementation meets criteria from the description, like:
-    val testInput = readInput("Day09_test")
+    val testInput = readInput("Day11_test")
     check(solver(testInput, true) == 114.toLong())
     check(solver(testInput, false) == 2.toLong())
 
-    val input = readInput("Day09")
+    val input = readInput("Day11")
     solver(input, true).println()
     solver(input, false).println()
 }
