@@ -1,3 +1,8 @@
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.runBlocking
+
 enum class Direction { LEFT, RIGHT, UP, DOWN }
 
 fun main() {
@@ -13,96 +18,121 @@ fun main() {
         println()
     }
 
-    fun solver(input: List<String>): List<List<Set<Direction>>> {
-        val energized: List<List<MutableSet<Direction>>> = List(input.size){List(input[0].length){ mutableSetOf() } }
-        val mirrorArray = input.map { it.toCharArray().toList() }
-        val toCheck = ArrayDeque<Move>()
+    fun solver(input: List<String>, starter: List<Move>): Int {
+        val max = runBlocking(Dispatchers.Default) {
+            starter.map {
+                async {
+                    val energized: List<List<MutableSet<Direction>>> =
+                        List(input.size) { List(input[0].length) { mutableSetOf() } }
+                    val mirrorArray = input.map { s -> s.toCharArray().toList() }
+                    val toCheck = ArrayDeque<Move>()
+                    toCheck.add(it)
 
-        if (mirrorArray[0][0] == '\\') {
-            toCheck.add((Move(Direction.DOWN, 0, 0)))
-        } else {
-            toCheck.add((Move(Direction.RIGHT, 0, 0)))
-        }
+                    var row: Int
+                    var col: Int
+                    var direction: Direction
 
-        var row: Int
-        var col: Int
-        var direction: Direction
+                    while (toCheck.isNotEmpty()) {
+                        direction = toCheck.first().direction
+                        row = toCheck.first().row
+                        col = toCheck.first().col
+                        toCheck.removeFirstOrNull()
 
-        while (toCheck.isNotEmpty()) {
-            direction = toCheck.first().direction
-            row = toCheck.first().row
-            col = toCheck.first().col
-            toCheck.removeFirstOrNull()
+                        try {
+                            if (energized[row][col].contains(direction)) continue
+                        } catch (e: IndexOutOfBoundsException) {
+                            continue
+                        }
 
-            if (energized[row][col].contains(direction)) continue
-            energized[row][col].add(direction)
-//            printEnergized(energized)
-            try {
-                when (direction) {
-                    Direction.LEFT -> {
-                        when (mirrorArray[row][--col]) {
-                            '|' -> {
-                                toCheck.add(Move(Direction.UP, row, col))
-                                toCheck.add(Move(Direction.DOWN, row, col))
+                        energized[row][col].add(direction)
+                        when (direction) {
+                            Direction.LEFT -> {
+                                when (mirrorArray[row][col]) {
+                                    '|' -> {
+                                        toCheck.add(Move(Direction.UP, row - 1, col))
+                                        toCheck.add(Move(Direction.DOWN, row + 1, col))
+                                    }
+
+                                    '\\' -> toCheck.add(Move(Direction.UP, row - 1, col))
+                                    '/' -> toCheck.add(Move(Direction.DOWN, row + 1, col))
+                                    else -> toCheck.add(Move(direction, row, col - 1))
+                                }
                             }
-                            '\\' -> toCheck.add(Move(Direction.UP, row, col))
-                            '/' -> toCheck.add(Move(Direction.DOWN, row, col))
-                            else -> toCheck.add(Move(direction, row, col))
+
+                            Direction.RIGHT -> {
+                                when (mirrorArray[row][col]) {
+                                    '|' -> {
+                                        toCheck.add(Move(Direction.UP, row - 1, col))
+                                        toCheck.add(Move(Direction.DOWN, row + 1, col))
+                                    }
+
+                                    '\\' -> toCheck.add(Move(Direction.DOWN, row + 1, col))
+                                    '/' -> toCheck.add(Move(Direction.UP, row - 1, col))
+                                    else -> toCheck.add(Move(direction, row, col + 1))
+                                }
+                            }
+
+                            Direction.UP -> {
+                                when (mirrorArray[row][col]) {
+                                    '-' -> {
+                                        toCheck.add(Move(Direction.LEFT, row, col - 1))
+                                        toCheck.add(Move(Direction.RIGHT, row, col + 1))
+                                    }
+
+                                    '\\' -> toCheck.add(Move(Direction.LEFT, row, col - 1))
+                                    '/' -> toCheck.add(Move(Direction.RIGHT, row, col + 1))
+                                    else -> toCheck.add(Move(direction, row - 1, col))
+                                }
+                            }
+
+                            Direction.DOWN -> {
+                                when (mirrorArray[row][col]) {
+                                    '-' -> {
+                                        toCheck.add(Move(Direction.LEFT, row, col - 1))
+                                        toCheck.add(Move(Direction.RIGHT, row, col + 1))
+                                    }
+
+                                    '\\' -> toCheck.add(Move(Direction.RIGHT, row, col + 1))
+                                    '/' -> toCheck.add(Move(Direction.LEFT, row, col - 1))
+                                    else -> toCheck.add(Move(direction, row + 1, col))
+                                }
+                            }
                         }
                     }
-                    Direction.RIGHT -> {
-                        when (mirrorArray[row][++col]) {
-                            '|' -> {
-                                toCheck.add(Move(Direction.UP, row, col))
-                                toCheck.add(Move(Direction.DOWN, row, col))
-                            }
-                            '\\' -> toCheck.add(Move(Direction.DOWN, row, col))
-                            '/' -> toCheck.add(Move(Direction.UP, row, col))
-                            else -> toCheck.add(Move(direction, row, col))
-                        }
-                    }
-                    Direction.UP -> {
-                        when (mirrorArray[--row][col]) {
-                            '-' -> {
-                                toCheck.add(Move(Direction.LEFT, row, col))
-                                toCheck.add(Move(Direction.RIGHT, row, col))
-                            }
-                            '\\' -> toCheck.add(Move(Direction.LEFT, row, col))
-                            '/' -> toCheck.add(Move(Direction.RIGHT, row, col))
-                            else -> toCheck.add(Move(direction, row, col))
-                        }
-                    }
-                    Direction.DOWN -> {
-                        when (mirrorArray[++row][col]) {
-                            '-' -> {
-                                toCheck.add(Move(Direction.LEFT, row, col))
-                                toCheck.add(Move(Direction.RIGHT, row, col))
-                            }
-                            '\\' -> toCheck.add(Move(Direction.RIGHT, row, col))
-                            '/' -> toCheck.add(Move(Direction.LEFT, row, col))
-                            else -> toCheck.add(Move(direction, row, col))
-                        }
+                    return@async energized.sumOf { line ->
+                        line.map { if (it.isNotEmpty()) 1 else 0 }
+                            .sum()
                     }
                 }
-            } catch (e: IndexOutOfBoundsException) {}
-        }
-        return energized.map { list -> list.map { it.toSet() } }
+            }.awaitAll()
+        }.max()
+        return max
     }
 
     fun part1(input: List<String>): Int {
-        val answer = solver(input).sumOf { line -> line.map { if (it.isNotEmpty()) 1 else 0 }.sum() }
+        val answer = solver(input, listOf(Move(Direction.RIGHT, 0, 0)))
         return answer
     }
     fun part2(input: List<String>): Int {
-        return input.size
+        val starter = MutableList(0){Move(Direction.RIGHT, 0, 0)}
+        input.forEachIndexed { row, _ ->
+            starter.add(Move(Direction.LEFT, row, input[0].length - 1))
+            starter.add(Move(Direction.RIGHT, row, 0))
+        }
+        input.forEachIndexed { col, _ ->
+            starter.add(Move(Direction.DOWN, 0, col))
+            starter.add(Move(Direction.UP, input.size - 1, col))
+        }
+        val answer = solver(input, starter.toList())
+        return answer
     }
 
     // test if implementation meets criteria from the description, like:
     val testInput = readInput("Day16_test")
     check(part1(testInput) == 46)
-//    check(part2(testInput) == 281)
+    check(part2(testInput) == 51)
 
     val input = readInput("Day16")
     part1(input).println()
-//    part2(input).println()
+    part2(input).println()
 }
